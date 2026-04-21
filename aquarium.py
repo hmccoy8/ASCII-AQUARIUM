@@ -34,8 +34,48 @@ FISH_SPRITES = [
 SAND_PATTERN  = "._.-`-._."
 SURFACE_CHARS = "~~--~~--"
 
+# ── Floor decoration sprites (bottom row sits on SAND) ───────────
+DECORATION_DEFS = [
+    {
+        "lines": [
+            "^ ^ ^ ^ ^",
+            "|       |",
+            "|  ___  |",
+            "| |   | |",
+            "|_|___|_|",
+        ],
+        "color": "decor_castle",
+    },
+    {
+        "lines": [
+            "    |    ",
+            "    |\\   ",
+            "____|_\\__",
+            "|_______|",
+        ],
+        "color": "decor_ship",
+    },
+    {
+        "lines": [
+            ".-----.",
+            "|o o o|",
+            "|_____|",
+        ],
+        "color": "decor_treasure",
+    },
+]
+
 
 # ── Entity classes ───────────────────────────────────────────────
+
+class Decoration:
+    def __init__(self, x: int, lines: list, color: str):
+        self.x      = x
+        self.lines  = lines
+        self.color  = color
+        self.width  = max(len(line) for line in lines)
+        self.height = len(lines)
+
 
 class Bubble:
     def __init__(self, x: float, y: float):
@@ -160,9 +200,12 @@ class AsciiAquarium:
         "bubble":       "#88ccff",
         "seaweed":      "#00cc55",
         "sand":         "#cc9944",
-        "rock":         "#556677",
-        "status":       "#335577",
-        "decor":        "#bbaa66",
+        "rock":           "#556677",
+        "status":         "#335577",
+        "decor":          "#bbaa66",
+        "decor_castle":   "#ccaa55",
+        "decor_ship":     "#998877",
+        "decor_treasure": "#ffdd44",
     }
 
     def __init__(self):
@@ -221,6 +264,7 @@ class AsciiAquarium:
 
         self._seaweeds    = self._make_seaweeds()
         self._floor_decor = self._make_floor_decor()
+        self._decorations = self._make_decorations()
 
         for _ in range(7):
             self._spawn_fish()
@@ -250,6 +294,27 @@ class AsciiAquarium:
             x = random.randint(1, max(1, COLS - 2))
             decor[x] = random.choice(icons)
         return decor
+
+    def _make_decorations(self) -> list:
+        decorations = []
+        occupied: set = set()
+        candidates = DECORATION_DEFS.copy()
+        random.shuffle(candidates)
+        for defn in candidates:
+            lines  = defn["lines"]
+            width  = max(len(line) for line in lines)
+            height = len(lines)
+            if ROWS - 4 < height + 1 or COLS < width + 4:
+                continue
+            max_x = COLS - width - 2
+            for _ in range(30):
+                x = random.randint(2, max_x)
+                if not any(c in occupied for c in range(x - 1, x + width + 1)):
+                    decorations.append(Decoration(x, lines, defn["color"]))
+                    for c in range(x - 2, x + width + 2):
+                        occupied.add(c)
+                    break
+        return decorations
 
     # ── Resize handling ──────────────────────────────────────────
 
@@ -288,9 +353,10 @@ class AsciiAquarium:
             if 0 <= int(b.x) < COLS and 1 < int(b.y) < ROWS - 2
         ]
 
-        # Rebuild seaweed and floor decor for the new width / depth
+        # Rebuild seaweed, floor decor, and decorations for the new width / depth
         self._seaweeds    = self._make_seaweeds()
         self._floor_decor = self._make_floor_decor()
+        self._decorations = self._make_decorations()
 
     # ── Controls ─────────────────────────────────────────────────
 
@@ -360,6 +426,17 @@ class AsciiAquarium:
         # Rocky bottom
         for c in range(COLS):
             grid[ROCK][c] = ("#", "rock")
+
+        # Floor decorations (castle, shipwreck, treasure chest)
+        for decor in self._decorations:
+            for di, line in enumerate(decor.lines):
+                r = SAND - decor.height + 1 + di
+                if not (SURF < r <= SAND):
+                    continue
+                for j, ch in enumerate(line):
+                    cx = decor.x + j
+                    if 0 <= cx < COLS and ch != " ":
+                        grid[r][cx] = (ch, decor.color)
 
         # Seaweed
         for sw in self._seaweeds:
