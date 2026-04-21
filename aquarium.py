@@ -362,7 +362,7 @@ class AsciiAquarium:
     # ── Controls ─────────────────────────────────────────────────
 
     def _spawn_fish(self):
-        if len(self.fishes) < 30:
+        if len(self.fishes) < 50:
             self.fishes.append(Fish())
 
     def _remove_fish(self):
@@ -396,7 +396,7 @@ class AsciiAquarium:
                         self.bubbles.append(Bubble(bx, by))
         self.fishes = live
 
-        if len(self.fishes) < 5 and random.random() < 0.04:
+        if len(self.fishes) < 50 and random.random() < 0.04:
             self._spawn_fish()
 
         for b in self.bubbles:
