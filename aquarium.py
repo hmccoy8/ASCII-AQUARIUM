@@ -106,7 +106,6 @@ class Fish:
         self._v_speed     = 0.0
         self._drift_timer = random.randint(60, 180)
         self.speed        = random.uniform(0.10, 0.38)
-        self._bubble_timer = random.randint(12, 45)
 
     @property
     def row(self) -> int:
@@ -124,7 +123,6 @@ class Fish:
 
     def update(self):
         self.x += self.direction * self.speed
-        self._bubble_timer -= 1
 
         # Vertical drift — smoothly slide toward _target_row
         if self._row_f != self._target_row:
@@ -146,19 +144,6 @@ class Fish:
                 shift = (span / 5 + random.random() * span * 0.3) * random.choice([-1, 1])
                 self._target_row = max(lo, min(hi, self._row_f + shift))
                 self._v_speed    = random.uniform(0.018, 0.040)
-
-    def mouth_pos(self) -> tuple:
-        sx = int(self.x)
-        if self.direction == 1:
-            return sx + len(self.sprite) - 1, self.row
-        else:
-            return sx, self.row
-
-    def want_bubble(self) -> bool:
-        if self._bubble_timer <= 0:
-            self._bubble_timer = random.randint(12, 45)
-            return True
-        return False
 
     @property
     def alive(self) -> bool:
@@ -263,6 +248,7 @@ class AsciiAquarium:
         self.fishes:  list = []
         self.bubbles: list = []
         self.frame = 0
+        self._bubble_timer = random.randint(40, 100)
 
         self._seaweeds    = self._make_seaweeds()
         self._floor_decor = self._make_floor_decor()
@@ -391,14 +377,17 @@ class AsciiAquarium:
             fish.update()
             if fish.alive:
                 live.append(fish)
-                if fish.want_bubble():
-                    bx, by = fish.mouth_pos()
-                    if 0 <= bx < COLS:
-                        self.bubbles.append(Bubble(bx, by))
         self.fishes = live
 
         if len(self.fishes) < 50 and random.random() < 0.04:
             self._spawn_fish()
+
+        self._bubble_timer -= 1
+        if self._bubble_timer <= 0:
+            self._bubble_timer = random.randint(60, 160)
+            x = random.randint(1, max(1, COLS - 2))
+            for i in range(random.randint(2, 5)):
+                self.bubbles.append(Bubble(x, float(ROWS - 3 - i)))
 
         for b in self.bubbles:
             b.update()
